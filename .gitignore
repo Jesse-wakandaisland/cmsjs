@@ -3,22 +3,42 @@ dist/
 *.log
 .env
 .env.local
-pocketbase/
+
+# PocketBase executables and downloads
+pocketbase/pocketbase
+pocketbase/pocketbase.exe
+pocketbase/*.zip
+
+# PocketBase runtime data (keep structure, ignore data)
+pocketbase/pb_data/*
+!pocketbase/pb_data/.gitkeep
+pocketbase/pb_migrations/*
+!pocketbase/pb_migrations/.gitkeep
+
+# Database files
 pb_data/
 .pocketbase/
 *.db
 *.db-shm
 *.db-wal
+
+# IDE
 .DS_Store
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+
+# Build and cache
 .cache/
 temp/
 tmp/
 build/
+
+# Electric-SQL
 .electric/
+
+# Mobile builds
 android/
 ios/
