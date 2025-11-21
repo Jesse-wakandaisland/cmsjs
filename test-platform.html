@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS.js Platform Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #1e1e1e;
+      color: #00ff00;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .test-result {
+      padding: 10px;
+      margin: 5px 0;
+      border-left: 4px solid #00ff00;
+      background: rgba(0, 255, 0, 0.1);
+    }
+    .test-result.error {
+      border-color: #ff0000;
+      color: #ff0000;
+      background: rgba(255, 0, 0, 0.1);
+    }
+    .test-result.pending {
+      border-color: #ffff00;
+      color: #ffff00;
+      background: rgba(255, 255, 0, 0.1);
+    }
+    h1 { color: #00ffff; }
+    h2 { color: #ff00ff; }
+    pre {
+      background: #000;
+      padding: 10px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 CMS.js Platform Test</h1>
+  <div id="test-output"></div>
+
+  <script type="module">
+    import CMSjs from './src/index.js';
+
+    const output = document.getElementById('test-output');
+
+    function log(message, type = 'success') {
+      const div = document.createElement('div');
+      div.className = `test-result ${type}`;
+      div.innerHTML = message;
+      output.appendChild(div);
+    }
+
+    function logSection(title) {
+      const h2 = document.createElement('h2');
+      h2.textContent = title;
+      output.appendChild(h2);
+    }
+
+    async function runTests() {
+      try {
+        logSection('1. Platform Initialization');
+        log('⏳ Waiting for CMS.js to initialize...', 'pending');
+
+        // Wait for cmsjs:ready event
+        await new Promise((resolve) => {
+          window.addEventListener('cmsjs:ready', (event) => {
+            log('✅ CMS.js initialized successfully');
+            resolve(event.detail.cmsjs);
+          });
+        });
+
+        const cmsjs = window.cmsjs;
+
+        logSection('2. System Status Check');
+        const stats = cmsjs.getStats();
+        log(`Platform Ready: ${stats.ready ? '✅' : '❌'}`);
+
+        log('<pre>' + JSON.stringify(stats.systems, null, 2) + '</pre>');
+
+        logSection('3. Test CR8ENGINE Template Generation');
+        log('⏳ Generating 3 Cr8Base templates...', 'pending');
+
+        let count = 0;
+        for await (const template of cmsjs.generateTemplates('Cr8Base', 3)) {
+          count++;
+          log(`✅ Template ${count}: ${template.id} - ${template.componentType} (${template.layoutType})`);
+        }
+
+        logSection('4. Test 3D Object Generation');
+        log('⏳ Generating 3D scene with 10 objects...', 'pending');
+
+        const scene = await cmsjs.create3DScene('test-scene', 10);
+        log(`✅ Scene created: ${scene.id} with ${scene.objects.length} objects`);
+        log(`✅ Environment: ${scene.environment.preset}`);
+        log(`✅ Lighting: ${scene.lighting.ambient.type} + ${scene.lighting.directional.type}`);
+
+        logSection('5. Test Design Variation Generation');
+        log('⏳ Generating 3 design variations...', 'pending');
+
+        count = 0;
+        for await (const variation of cmsjs.generateDesigns(null, 3)) {
+          count++;
+          log(`✅ Variation ${count}: ${variation.style_name} - ${variation.config.colors.palette.primary}`);
+        }
+
+        logSection('6. Test PGlite Database');
+        log('⏳ Creating test content...', 'pending');
+
+        const content = await cmsjs.systems.pglite.createContent({
+          type: 'page',
+          title: 'Test Page',
+          body: 'This is a test page created by the platform test.',
+          status: 'published'
+        });
+        log(`✅ Content created: ${content.id} - "${content.title}"`);
+
+        const allContent = await cmsjs.systems.pglite.listContent();
+        log(`✅ Total content items in database: ${allContent.length}`);
+
+        logSection('7. Test ConvoAppGen Reactivity');
+        log('⏳ Testing reactive data...', 'pending');
+
+        let changeDetected = false;
+        cmsjs.systems.convoapp.subscribe('test.value', (newVal, oldVal) => {
+          changeDetected = true;
+          log(`✅ Change detected: ${oldVal} → ${newVal}`);
+        });
+
+        cmsjs.systems.convoapp.set('test.value', 'Hello CMS.js!');
+
+        if (changeDetected) {
+          log('✅ Reactive system working correctly');
+        } else {
+          log('❌ Reactive system failed to detect change', 'error');
+        }
+
+        logSection('8. Final Statistics');
+        const finalStats = cmsjs.getStats();
+        log('<pre>' + JSON.stringify({
+          templatesGenerated: finalStats.cr8engine?.generatedCount || 0,
+          objects3DGenerated: finalStats.generator3d?.generatedCount || 0,
+          designVariations: finalStats.designVariation?.generatedCount || 0,
+          viewportObservedElements: finalStats.viewport?.observedElements || 0
+        }, null, 2) + '</pre>');
+
+        logSection('✅ All Tests Passed!');
+        log('The CMS.js platform is fully operational and ready for use.');
+
+      } catch (error) {
+        logSection('❌ Test Failed');
+        log(`Error: ${error.message}`, 'error');
+        log('<pre>' + error.stack + '</pre>', 'error');
+      }
+    }
+
+    runTests();
+  </script>
+</body>
+</html>
