@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS Backend</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.online { background: #10b981; }
+    .status-dot.offline { background: #ef4444; }
+    .status-dot.local { background: #f59e0b; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+    }
+
+    .sidebar {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      height: fit-content;
+      position: sticky;
+      top: 20px;
+    }
+
+    .nav-item {
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .nav-item:hover {
+      background: #334155;
+      transform: translateX(4px);
+    }
+
+    .nav-item.active {
+      background: #3b82f6;
+    }
+
+    .content-area {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 600px;
+    }
+
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #94a3b8;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    textarea {
+      min-height: 200px;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn:disabled {
+      background: #475569;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .content-list {
+      list-style: none;
+    }
+
+    .content-item {
+      background: #0f172a;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .content-item:hover {
+      background: #1e293b;
+      transform: translateX(4px);
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: #0f172a;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #3b82f6;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    #db-viewer {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px;
+      max-height: 500px;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #334155;
+    }
+
+    th {
+      background: #1e293b;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #334155;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.1);
+      border-left: 4px solid #10b981;
+      color: #10b981;
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.1);
+      border-left: 4px solid #ef4444;
+      color: #ef4444;
+    }
+
+    .alert-info {
+      background: rgba(59, 130, 246, 0.1);
+      border-left: 4px solid #3b82f6;
+      color: #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CMS Backend</h1>
+      <div class="status-indicator">
+        <div class="status-dot local" id="status-dot"></div>
+        <span id="status-text">Initializing...</span>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div class="sidebar">
+        <div class="nav-item active" data-panel="dashboard">Dashboard</div>
+        <div class="nav-item" data-panel="content">Content Manager</div>
+        <div class="nav-item" data-panel="database">Database Viewer</div>
+        <div class="nav-item" data-panel="settings">Settings</div>
+      </div>
+
+      <div class="content-area">
+        <div id="dashboard-panel" class="panel active">
+          <h2>Dashboard</h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-content">0</div>
+              <div class="stat-label">Content Items</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-cache">0</div>
+              <div class="stat-label">Cache Size (KB)</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-db">0</div>
+              <div class="stat-label">DB Size (KB)</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="content-panel" class="panel">
+          <h2>Content Manager</h2>
+          <button class="btn" id="new-content-btn">New Content</button>
+          <div id="content-form" style="display: none; margin-top: 20px;">
+            <div class="form-group">
+              <label>Content ID</label>
+              <input type="text" id="content-id" placeholder="unique-content-id">
+            </div>
+            <div class="form-group">
+              <label>Content Type</label>
+              <select id="content-type">
+                <option value="html">HTML</option>
+                <option value="text">Text</option>
+                <option value="json">JSON</option>
+                <option value="markdown">Markdown</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Content Body</label>
+              <textarea id="content-body" placeholder="Enter your content here..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>CSS (Optional)</label>
+              <textarea id="content-css" style="min-height: 100px;" placeholder="Enter custom CSS..."></textarea>
+            </div>
+            <button class="btn" id="save-content-btn">Save Content</button>
+            <button class="btn btn-danger" id="cancel-content-btn">Cancel</button>
+          </div>
+          <ul class="content-list" id="content-list"></ul>
+        </div>
+
+        <div id="database-panel" class="panel">
+          <h2>Database Viewer</h2>
+          <div class="alert alert-info">
+            <strong>Mode:</strong> <span id="db-mode">Local (Read/Write)</span>
+          </div>
+          <div id="db-viewer"></div>
+        </div>
+
+        <div id="settings-panel" class="panel">
+          <h2>Settings</h2>
+          <div class="form-group">
+            <label>API Endpoint</label>
+            <input type="text" id="api-endpoint" placeholder="http://localhost:8080">
+          </div>
+          <div class="form-group">
+            <label>Cache Duration (ms)</label>
+            <input type="number" id="cache-duration" value="300000">
+          </div>
+          <button class="btn" id="save-settings-btn">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { PGlite } from 'https://cdn.jsdelivr.net/npm/@electric-sql/pglite/dist/index.js';
+
+    class CMSBackend {
+      constructor() {
+        this.db = null;
+        this.phpRuntime = null;
+        this.isOnline = navigator.onLine;
+        this.isLocal = window.location.protocol === 'file:' || window.location.hostname === 'localhost';
+        this.currentContent = null;
+        
+        this.init();
+      }
+
+      async init() {
+        await this.initDatabase();
+        await this.initPHP();
+        this.setupEventListeners();
+        this.updateStatus();
+        this.loadDashboard();
+        this.loadContentList();
+
+        window.addEventListener('online', () => {
+          this.isOnline = true;
+          this.updateStatus();
+          this.lockDatabase();
+        });
+
+        window.addEventListener('offline', () => {
+          this.isOnline = false;
+          this.updateStatus();
+        });
+      }
+
+      async initDatabase() {
+        try {
+          this.db = await PGlite.create({
+            dataDir: 'idb://cms-db'
+          });
+
+          await this.db.exec(`
+            CREATE TABLE IF NOT EXISTS content (
+              id TEXT PRIMARY KEY,
+              type TEXT NOT NULL,
+              body TEXT NOT NULL,
+              css TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS settings (
+              key TEXT PRIMARY KEY,
+              value TEXT NOT NULL
+            );
+          `);
+
+          console.log('Database initialized');
+        } catch (error) {
+          console.error('Database init failed:', error);
+          this.showAlert('Database initialization failed', 'error');
+        }
+      }
+
+      async initPHP() {
+        console.log('PHP-WASM runtime ready for integration');
+      }
+
+      async lockDatabase() {
+        if (this.isOnline && !this.isLocal) {
+          console.log('Database locked (read-only mode)');
+        }
+      }
+
+      isWriteable() {
+        return this.isLocal || !this.isOnline;
+      }
+
+      updateStatus() {
+        const dot = document.getElementById('status-dot');
+        const text = document.getElementById('status-text');
+        const mode = document.getElementById('db-mode');
+
+        if (this.isLocal) {
+          dot.className = 'status-dot local';
+          text.textContent = 'Local Mode';
+          if (mode) mode.textContent = 'Local (Read/Write)';
+        } else if (this.isOnline) {
+          dot.className = 'status-dot online';
+          text.textContent = 'Online Mode';
+          if (mode) mode.textContent = 'Online (Read-Only)';
+        } else {
+          dot.className = 'status-dot offline';
+          text.textContent = 'Offline Mode';
+          if (mode) mode.textContent = 'Offline (Read/Write)';
+        }
+      }
+
+      setupEventListeners() {
+        document.querySelectorAll('.nav-item').forEach(item => {
+          item.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            const panel = item.getAttribute('data-panel');
+            document.getElementById(`${panel}-panel`).classList.add('active');
+
+            if (panel === 'database') {
+              this.loadDatabaseViewer();
+            }
+          });
+        });
+
+        document.getElementById('new-content-btn').addEventListener('click', () => {
+          if (!this.isWriteable()) {
+            this.showAlert('Database is read-only in online mode', 'error');
+            return;
+          }
+          document.getElementById('content-form').style.display = 'block';
+          this.currentContent = null;
+          this.clearContentForm();
+        });
+
+        document.getElementById('save-content-btn').addEventListener('click', () => {
+          this.saveContent();
+        });
+
+        document.getElementById('cancel-content-btn').addEventListener('click', () => {
+          document.getElementById('content-form').style.display = 'none';
+          this.clearContentForm();
+        });
+
+        document.getElementById('save-settings-btn').addEventListener('click', () => {
+          this.saveSettings();
+        });
+      }
+
+      async loadDashboard() {
+        try {
+          const result = await this.db.query('SELECT COUNT(*) as count FROM content');
+          document.getElementById('stat-content').textContent = result.rows[0].count;
+
+          const dbSize = await this.getDbSize();
+          document.getElementById('stat-db').textContent = Math.round(dbSize / 1024);
+
+          const cacheSize = new Blob([localStorage.getItem('cms_cache') || '']).size;
+          document.getElementById('stat-cache').textContent = Math.round(cacheSize / 1024);
+        } catch (error) {
+          console.error('Dashboard load failed:', error);
+        }
+      }
+
+      async getDbSize() {
+        try {
+          const result = await this.db.query(`
+            SELECT pg_database_size(current_database()) as size
+          `);
+          return result.rows[0]?.size || 0;
+        } catch {
+          return 0;
+        }
+      }
+
+      async loadContentList() {
+        try {
+          const result = await this.db.query('SELECT * FROM content ORDER BY updated_at DESC');
+          const list = document.getElementById('content-list');
+          list.innerHTML = '';
+
+          result.rows.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'content-item';
+            li.innerHTML = `
+              <div>
+                <strong>${item.id}</strong>
+                <small style="color: #94a3b8; margin-left: 12px;">${item.type}</small>
+              </div>
+              <div class="item-actions">
+                <button class="btn btn-small" onclick="cmsBackend.editContent('${item.id}')">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="cmsBackend.deleteContent('${item.id}')">Delete</button>
+              </div>
+            `;
+            list.appendChild(li);
+          });
+        } catch (error) {
+          console.error('Content list load failed:', error);
+        }
+      }
+
+      async saveContent() {
+        if (!this.isWriteable()) {
+          this.showAlert('Cannot save: Database is read-only', 'error');
+          return;
+        }
+
+        const id = document.getElementById('content-id').value;
+        const type = document.getElementById('content-type').value;
+        const body = document.getElementById('content-body').value;
+        const css = document.getElementById('content-css').value;
+
+        if (!id || !body) {
+          this.showAlert('Please fill in all required fields', 'error');
+          return;
+        }
+
+        try {
+          await this.db.query(`
+            INSERT INTO content (id, type, body, css, updated_at)
+            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO UPDATE
+            SET type = $2, body = $3, css = $4, updated_at = CURRENT_TIMESTAMP
+          `, [id, type, body, css || null]);
+
+          this.showAlert('Content saved successfully', 'success');
+          document.getElementById('content-form').style.display = 'none';
+          this.clearContentForm();
+          this.loadContentList();
+          this.loadDashboard();
+        } catch (error) {
+          console.error('Save failed:', error);
+          this.showAlert('Failed to save content', 'error');
+        }
+      }
+
+      async editContent(id) {
+        try {
+          const result = await this.db.query('SELECT * FROM content WHERE id = $1', [id]);
+          if (result.rows.length > 0) {
+            const content = result.rows[0];
+            document.getElementById('content-id').value = content.id;
+            document.getElementById('content-type').value = content.type;
+            document.getElementById('content-body').value = content.body;
+            document.getElementById('content-css').value = content.css || '';
+            document.getElementById('content-form').style.display = 'block';
+            this.currentContent = content;
+          }
+        } catch (error) {
+          console.error('Edit failed:', error);
+        }
+      }
+
+      async deleteContent(id) {
+        if (!this.isWriteable()) {
+          this.showAlert('Cannot delete: Database is read-only', 'error');
+          return;
+        }
+
+        if (!confirm(`Delete content "${id}"?`)) return;
+
+        try {
+          await this.db.query('DELETE FROM content WHERE id = $1', [id]);
+          this.showAlert('Content deleted', 'success');
+          this.loadContentList();
+          this.loadDashboard();
+        } catch (error) {
+          console.error('Delete failed:', error);
+          this.showAlert('Failed to delete content', 'error');
+        }
+      }
+
+      async loadDatabaseViewer() {
+        try {
+          const result = await this.db.query('SELECT * FROM content ORDER BY updated_at DESC');
+          const viewer = document.getElementById('db-viewer');
+          
+          if (result.rows.length === 0) {
+            viewer.innerHTML = '<p style="color: #94a3b8;">No data in database</p>';
+            return;
+          }
+
+          let html = '<table><thead><tr>';
+          Object.keys(result.rows[0]).forEach(key => {
+            html += `<th>${key}</th>`;
+          });
+          html += '</tr></thead><tbody>';
+
+          result.rows.forEach(row => {
+            html += '<tr>';
+            Object.values(row).forEach(value => {
+              const display = typeof value === 'string' && value.length > 50 
+                ? value.substring(0, 50) + '...' 
+                : value;
+              html += `<td>${display || '-'}</td>`;
+            });
+            html += '</tr>';
+          });
+
+          html += '</tbody></table>';
+          viewer.innerHTML = html;
+        } catch (error) {
+          console.error('DB viewer failed:', error);
+        }
+      }
+
+      clearContentForm() {
+        document.getElementById('content-id').value = '';
+        document.getElementById('content-type').value = 'html';
+        document.getElementById('content-body').value = '';
+        document.getElementById('content-css').value = '';
+      }
+
+      async saveSettings() {
+        const apiEndpoint = document.getElementById('api-endpoint').value;
+        const cacheDuration = document.getElementById('cache-duration').value;
+
+        try {
+          await this.db.query(`
+            INSERT INTO settings (key, value) VALUES ('api_endpoint', $1)
+            ON CONFLICT (key) DO UPDATE SET value = $1
+          `, [apiEndpoint]);
+
+          await this.db.query(`
+            INSERT INTO settings (key, value) VALUES ('cache_duration', $1)
+            ON CONFLICT (key) DO UPDATE SET value = $1
+          `, [cacheDuration]);
+
+          this.showAlert('Settings saved', 'success');
+        } catch (error) {
+          console.error('Settings save failed:', error);
+          this.showAlert('Failed to save settings', 'error');
+        }
+      }
+
+      showAlert(message, type = 'info') {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.textContent = message;
+        
+        const contentArea = document.querySelector('.content-area');
+        const activePanel = contentArea.querySelector('.panel.active');
+        activePanel.insertBefore(alert, activePanel.firstChild);
+
+        setTimeout(() => alert.remove(), 3000);
+      }
+    }
+
+    const cmsBackend = new CMSBackend();
+    window.cmsBackend = cmsBackend;
+  </script>
+</body>
+</html>
