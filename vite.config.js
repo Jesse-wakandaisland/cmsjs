@@ -58,13 +58,12 @@ export default defineConfig({
     }
   },
   build: {
-    target: 'es2020',
+    target: 'esnext',
     rollupOptions: {
+      external: [],
       output: {
         manualChunks: {
-          'aframe': ['aframe'],
-          'derby': ['derby', 'racer'],
-          'electric': ['@electric-sql/pglite']
+          'pglite': ['@electric-sql/pglite']
         }
       }
     }
