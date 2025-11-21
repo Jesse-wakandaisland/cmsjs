@@ -1,32 +1,39 @@
 /**
- * PocketBase Hooks
- * This file runs server-side in PocketBase
+ * PocketBase Hooks for CMS.js
+ * PocketBase 0.20.x JavaScript Hooks
  */
 
-// CORS configuration for development
-onBeforeServe((e) => {
-  e.router.pre((c) => {
-    c.response.header().set('Access-Control-Allow-Origin', '*')
-    c.response.header().set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-    c.response.header().set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+// CORS middleware for all routes
+routerAdd("GET", "/*", (c) => {
+  c.response().header().set("Access-Control-Allow-Origin", "*")
+  c.response().header().set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+  c.response().header().set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+  return c.next()
+}, $apis.requireAdminOrRecordAuth())
 
-    if (c.request.method === 'OPTIONS') {
-      return c.noContent(204)
-    }
-
-    return c.next()
-  })
+routerAdd("POST", "/*", (c) => {
+  c.response().header().set("Access-Control-Allow-Origin", "*")
+  c.response().header().set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+  c.response().header().set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+  return c.next()
 })
 
-// Log all record changes for AevIP sync
+routerAdd("OPTIONS", "/*", (c) => {
+  c.response().header().set("Access-Control-Allow-Origin", "*")
+  c.response().header().set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+  c.response().header().set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+  return c.noContent(204)
+})
+
+// Log record operations for AevIP sync
 onRecordAfterCreateRequest((e) => {
   console.log(`[AevIP] Record created: ${e.collection.name}/${e.record.id}`)
-})
+}, "content", "templates", "variations", "aframe_objects")
 
 onRecordAfterUpdateRequest((e) => {
   console.log(`[AevIP] Record updated: ${e.collection.name}/${e.record.id}`)
-})
+}, "content", "templates", "variations", "aframe_objects")
 
 onRecordAfterDeleteRequest((e) => {
   console.log(`[AevIP] Record deleted: ${e.collection.name}/${e.record.id}`)
-})
+}, "content", "templates", "variations", "aframe_objects")

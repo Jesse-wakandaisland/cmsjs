@@ -398,11 +398,38 @@
   <script type="module">
     import CMSjs from './src/index.js';
 
+    // Timeout to hide loader if initialization takes too long or fails
+    const initTimeout = setTimeout(() => {
+      const loader = document.getElementById('loader');
+      const loaderText = loader.querySelector('.loader-text');
+      loaderText.textContent = '⚠️ Initialization timeout. Check console for errors.';
+      loaderText.style.color = '#fbbf24';
+
+      setTimeout(() => {
+        loader.classList.add('hidden');
+      }, 2000);
+    }, 10000); // 10 second timeout
+
+    // Catch any unhandled errors
+    window.addEventListener('error', (event) => {
+      console.error('Unhandled error:', event.error);
+      const loader = document.getElementById('loader');
+      const loaderText = loader.querySelector('.loader-text');
+      loaderText.textContent = '❌ Initialization failed. Check console for details.';
+      loaderText.style.color = '#ef4444';
+
+      clearTimeout(initTimeout);
+      setTimeout(() => {
+        loader.classList.add('hidden');
+      }, 3000);
+    });
+
     // Wait for CMS.js to be ready
     window.addEventListener('cmsjs:ready', (event) => {
       console.log('CMS.js is ready!', event.detail.cmsjs);
 
-      // Hide loader
+      // Clear timeout and hide loader
+      clearTimeout(initTimeout);
       document.getElementById('loader').classList.add('hidden');
 
       // Update stats
