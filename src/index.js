@@ -1,19 +1,20 @@
 /**
  * CMS.js - Main Entry Point
- * Integrates all systems:
- * - AevIP Protocol
- * - PGlite Database
- * - Electric-SQL Sync
- * - ConvoAppGen (Derby.js)
- * - CR8ENGINE
- * - Infinite 3D Generator
- * - Design Variation Engine
+ * Local-First Infinite Generative CMS Platform
+ *
+ * Core Systems:
+ * - PGlite Database (Local PostgreSQL in Browser)
+ * - ConvoAppGen (Reactive Framework)
+ * - CR8ENGINE (7 Infinite Template Generators)
+ * - Infinite 3D Generator (14 A-Frame Primitives)
+ * - Design Variation Engine (8+ Styles)
+ * - AevIP Protocol (Local Change Tracking)
+ * - Viewport Sync (Deep Observer Integration)
  */
 
 import { AevIPProtocol } from './core/aevip/protocol.js';
 import { ViewportSync } from './core/aevip/viewport-sync.js';
 import { PGliteManager } from './core/data/pglite-manager.js';
-import { ElectricSync } from './core/data/electric-sync.js';
 import { ConvoAppGen } from './core/convoappgen/index.js';
 import { CR8Engine } from './engines/cr8engine/index.js';
 import { Infinite3DGenerator } from './engines/aframe3d/infinite-generator.js';
@@ -22,11 +23,10 @@ import { DesignVariationEngine } from './engines/design-variation/index.js';
 class CMSjs {
   constructor(config = {}) {
     this.config = {
-      pocketbaseUrl: config.pocketbaseUrl || 'http://localhost:8090',
-      electricUrl: config.electricUrl || 'ws://localhost:5133',
-      enableRealtime: config.enableRealtime !== false,
       enable3D: config.enable3D !== false,
       enableInfiniteGeneration: config.enableInfiniteGeneration !== false,
+      enableObservers: config.enableObservers !== false,
+      debug: config.debug || false,
       ...config
     };
 
@@ -34,7 +34,6 @@ class CMSjs {
       aevip: null,
       viewport: null,
       pglite: null,
-      electric: null,
       convoapp: null,
       cr8engine: null,
       generator3d: null,
@@ -49,55 +48,43 @@ class CMSjs {
    * Initialize all systems
    */
   async init() {
-    console.log('%c🚀 CMS.js Initializing...', 'color: #3b82f6; font-size: 16px; font-weight: bold');
+    console.log('%c🚀 CMS.js Initializing (Local-First Mode)...', 'color: #3b82f6; font-size: 16px; font-weight: bold');
 
     try {
-      // 1. Initialize PGlite database
+      // 1. Initialize PGlite database (Local PostgreSQL in Browser)
       console.log('📊 Initializing PGlite database...');
       this.systems.pglite = new PGliteManager({
         dataDir: 'idb://cmsjs-db',
-        debug: false
+        debug: this.config.debug
       });
       await this.systems.pglite.init();
 
-      // 2. Initialize AevIP protocol
-      console.log('🔄 Initializing AevIP protocol...');
+      // 2. Initialize AevIP protocol (Local change tracking)
+      console.log('🔄 Initializing AevIP protocol (local mode)...');
       this.systems.aevip = new AevIPProtocol({
-        pocketbaseUrl: this.config.pocketbaseUrl
+        localMode: true
       });
 
-      // 3. Initialize Viewport Sync
-      console.log('👁️ Initializing Viewport Sync...');
-      this.systems.viewport = new ViewportSync(this.systems.aevip, {
-        rootMargin: '100px',
-        threshold: [0, 0.25, 0.5, 0.75, 1.0]
-      });
+      // 3. Initialize Viewport Sync (Observer APIs)
+      if (this.config.enableObservers) {
+        console.log('👁️ Initializing Viewport Sync...');
+        this.systems.viewport = new ViewportSync(this.systems.aevip, {
+          rootMargin: '100px',
+          threshold: [0, 0.25, 0.5, 0.75, 1.0]
+        });
 
-      // Link viewport sync to AevIP
-      this.systems.aevip.viewportSync = this.systems.viewport;
-
-      // 4. Initialize Electric-SQL sync
-      if (this.config.enableRealtime) {
-        console.log('⚡ Initializing Electric-SQL sync...');
-        this.systems.electric = new ElectricSync(
-          this.systems.pglite,
-          this.systems.aevip,
-          {
-            electricUrl: this.config.electricUrl,
-            pocketbaseUrl: this.config.pocketbaseUrl
-          }
-        );
-        await this.systems.electric.init();
+        // Link viewport sync to AevIP
+        this.systems.aevip.viewportSync = this.systems.viewport;
       }
 
-      // 5. Initialize ConvoAppGen (Derby.js)
+      // 4. Initialize ConvoAppGen (Vanilla JS Reactive Framework)
       console.log('🎨 Initializing ConvoAppGen...');
       this.systems.convoapp = new ConvoAppGen(this.systems.pglite, {
         appName: 'CMS.js',
-        enableRealtimeSync: this.config.enableRealtime
+        enableRealtimeSync: false
       });
 
-      // 6. Initialize CR8ENGINE
+      // 5. Initialize CR8ENGINE
       if (this.config.enableInfiniteGeneration) {
         console.log('⚙️ Initializing CR8ENGINE...');
         this.systems.cr8engine = new CR8Engine(this.systems.convoapp, {
@@ -113,7 +100,7 @@ class CMSjs {
         });
       }
 
-      // 7. Initialize Infinite 3D Generator
+      // 6. Initialize Infinite 3D Generator
       if (this.config.enable3D) {
         console.log('🎭 Initializing Infinite 3D Generator...');
         this.systems.generator3d = new Infinite3DGenerator(this.systems.pglite, {
@@ -123,7 +110,7 @@ class CMSjs {
         });
       }
 
-      // 8. Initialize Design Variation Engine
+      // 7. Initialize Design Variation Engine
       if (this.config.enableInfiniteGeneration) {
         console.log('🎨 Initializing Design Variation Engine...');
         this.systems.designVariation = new DesignVariationEngine({
@@ -264,12 +251,13 @@ class CMSjs {
   getStats() {
     return {
       ready: this.ready,
+      mode: 'local-first',
+      database: 'PGlite (IndexedDB)',
       systems: this.getSystemsStatus(),
       cr8engine: this.systems.cr8engine?.getStats(),
       generator3d: this.systems.generator3d?.getStats(),
       designVariation: this.systems.designVariation?.getStats(),
-      viewport: this.systems.viewport?.getStats(),
-      electric: this.systems.electric?.getStatus()
+      viewport: this.systems.viewport?.getStats()
     };
   }
 

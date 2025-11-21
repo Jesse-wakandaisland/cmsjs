@@ -1,27 +1,25 @@
 {
   "name": "cmsjs",
   "version": "1.0.0",
-  "description": "CMS.js - Integrated PocketBase + Electric + ConvoAppGen platform with infinite generative capabilities",
+  "description": "CMS.js - Local-first infinite generative CMS with PGlite, ConvoAppGen & A-Frame",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:full": "concurrently \"npm run pocketbase\" \"npm run dev\" --names \"PocketBase,Vite\" --prefix-colors \"blue,magenta\"",
     "build": "vite build",
     "build:mobile": "npm run build && cap sync",
-    "preview": "vite preview",
-    "pocketbase": "node -e \"require('child_process').spawn(process.platform==='win32'?'.\\\\scripts\\\\start-pocketbase.cmd':'./scripts/start-pocketbase.sh',{shell:true,stdio:'inherit'})\"",
-    "install:pocketbase": "node scripts/install-pocketbase.js"
+    "preview": "vite preview"
   },
   "keywords": [
     "cms",
-    "pocketbase",
-    "electric-sql",
-    "convoappgen",
+    "local-first",
     "pglite",
+    "convoappgen",
     "infinite-generation",
     "aframe",
-    "3d"
+    "3d",
+    "offline-first",
+    "generative"
   ],
   "author": "Jesse-wakandaisland",
   "license": "Apache-2.0",
@@ -33,7 +31,6 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^5.5.1",
-    "concurrently": "^8.2.2",
     "vite": "^5.0.11",
     "vite-plugin-pwa": "^0.17.4"
   }
