@@ -1,16 +1,15 @@
 /**
- * ConvoAppGen - Derby.js Integration
- * Renamed and extended Derby.js for infinite app generation
+ * ConvoAppGen - Pure Vanilla JS Reactive Framework
+ * Replaces Derby.js with a lightweight reactive system using Proxy
  *
  * Features:
- * - Reactive templates from Derby/Racer
- * - Integrates with CR8ENGINE for template generation
- * - Works with Design Variation Engine for infinite styles
- * - Real-time data binding with PGlite
+ * - Reactive data model using JavaScript Proxy
+ * - Template system with mustache-like syntax
+ * - Component registration
+ * - Real-time data binding
+ * - Integration with PGlite
+ * - Deep observer integration
  */
-
-import derby from 'derby';
-import { Racer } from 'racer';
 
 export class ConvoAppGen {
   constructor(pgliteManager, config = {}) {
@@ -22,10 +21,15 @@ export class ConvoAppGen {
       ...config
     };
 
-    this.app = null;
-    this.model = null;
-    this.templates = new Map();
-    this.components = new Map();
+    this.state = {
+      data: {},
+      templates: new Map(),
+      components: new Map(),
+      bindings: new Map(), // element -> { path, handler }
+      observers: new Map()
+    };
+
+    this.reactiveData = this.createReactiveProxy(this.state.data);
 
     this.init();
   }
@@ -34,81 +38,134 @@ export class ConvoAppGen {
    * Initialize ConvoAppGen
    */
   init() {
-    // Create Derby app
-    this.app = derby.createApp(this.config.appName, __filename);
-
-    // Setup model (Racer)
-    this.setupModel();
-
-    // Register core components
     this.registerCoreComponents();
-
-    console.log('ConvoAppGen: Initialized');
+    this.setupObservers();
+    console.log('ConvoAppGen: Initialized (Vanilla JS)');
   }
 
   /**
-   * Setup Racer model for reactive data
+   * Create reactive proxy for data
    */
-  setupModel() {
-    // Create Racer model
-    this.model = new Racer.Model();
+  createReactiveProxy(target, path = '') {
+    const self = this;
 
-    // Bind to PGlite
-    this.bindToPGlite();
+    return new Proxy(target, {
+      get(obj, prop) {
+        const value = obj[prop];
 
-    console.log('ConvoAppGen: Model initialized');
+        // Return reactive proxy for nested objects
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          return self.createReactiveProxy(value, path ? `${path}.${prop}` : prop);
+        }
+
+        return value;
+      },
+
+      set(obj, prop, value) {
+        const oldValue = obj[prop];
+        obj[prop] = value;
+
+        const fullPath = path ? `${path}.${prop}` : prop;
+
+        // Notify observers
+        self.notifyChange(fullPath, value, oldValue);
+
+        // Sync to PGlite if needed
+        if (self.config.enableRealtimeSync) {
+          self.syncToPGlite(fullPath, value);
+        }
+
+        return true;
+      },
+
+      deleteProperty(obj, prop) {
+        const oldValue = obj[prop];
+        delete obj[prop];
+
+        const fullPath = path ? `${path}.${prop}` : prop;
+        self.notifyChange(fullPath, undefined, oldValue);
+
+        return true;
+      }
+    });
   }
 
   /**
-   * Bind model to PGlite database
+   * Notify observers of data changes
    */
-  async bindToPGlite() {
-    // Listen to model changes and sync to PGlite
-    this.model.on('change', '**', async (path, value, previous) => {
-      await this.handleModelChange(path, value, previous);
+  notifyChange(path, newValue, oldValue) {
+    // Notify specific path observers
+    const handlers = this.state.observers.get(path);
+    if (handlers) {
+      handlers.forEach(handler => {
+        try {
+          handler(newValue, oldValue, path);
+        } catch (error) {
+          console.error('ConvoAppGen: Observer error', error);
+        }
+      });
+    }
+
+    // Notify wildcard observers (path.**)
+    this.state.observers.forEach((handlers, observedPath) => {
+      if (observedPath.endsWith('**') && path.startsWith(observedPath.slice(0, -2))) {
+        handlers.forEach(handler => {
+          try {
+            handler(newValue, oldValue, path);
+          } catch (error) {
+            console.error('ConvoAppGen: Observer error', error);
+          }
+        });
+      }
     });
 
-    // Load initial data from PGlite
-    await this.loadFromPGlite();
+    // Update bound elements
+    this.updateBoundElements(path, newValue);
   }
 
   /**
-   * Handle model changes
+   * Update elements bound to this path
    */
-  async handleModelChange(path, value, previous) {
-    console.debug('ConvoAppGen: Model changed', path, value);
+  updateBoundElements(path, value) {
+    this.state.bindings.forEach((binding, element) => {
+      if (binding.path === path || path.startsWith(binding.path + '.')) {
+        this.updateElement(element, value);
+      }
+    });
+  }
 
-    // Determine which collection this affects
-    const [collection] = path.split('.');
+  /**
+   * Sync data to PGlite
+   */
+  async syncToPGlite(path, value) {
+    const [collection, id] = path.split('.');
 
-    if (collection === 'content' && this.pglite) {
-      // Sync to PGlite
+    if (collection === 'content' && id && this.pglite) {
       try {
-        const contentId = path.split('.')[1];
-        if (contentId && value) {
-          await this.pglite.updateContent(contentId, value);
-        }
+        await this.pglite.updateContent(id, { [path.split('.').pop()]: value });
       } catch (error) {
-        console.error('ConvoAppGen: Failed to sync to PGlite', error);
+        console.debug('ConvoAppGen: PGlite sync skipped', error.message);
       }
     }
   }
 
   /**
-   * Load data from PGlite into model
+   * Load data from PGlite
    */
   async loadFromPGlite() {
+    if (!this.pglite) return;
+
     try {
       // Load content
       const content = await this.pglite.listContent();
       content.forEach(item => {
-        this.model.set(`content.${item.id}`, item);
+        this.set(`content.${item.id}`, item);
       });
 
       // Load templates
       const templates = await this.pglite.getTemplates();
       templates.forEach(template => {
-        this.model.set(`templates.${template.id}`, template);
+        this.set(`templates.${template.id}`, template);
         this.registerTemplate(template);
       });
 
@@ -119,24 +176,111 @@ export class ConvoAppGen {
   }
 
   /**
+   * Setup observers for DOM changes
+   */
+  setupObservers() {
+    // Observe DOM for elements with data-bind attribute
+    if (typeof MutationObserver !== 'undefined') {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === 1) {
+              this.discoverBindings(node);
+            }
+          });
+        });
+      });
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+  }
+
+  /**
+   * Discover data bindings in DOM
+   */
+  discoverBindings(root = document.body) {
+    // Find elements with data-bind attribute
+    const elements = root.querySelectorAll('[data-bind]');
+
+    elements.forEach(element => {
+      const path = element.getAttribute('data-bind');
+      const bidirectional = element.hasAttribute('data-bind-two-way');
+
+      this.bindToElement(element, path, bidirectional);
+    });
+  }
+
+  /**
+   * Bind data to element
+   */
+  bindToElement(element, path, bidirectional = false) {
+    if (!element || !path) return;
+
+    // Store binding
+    this.state.bindings.set(element, { path, bidirectional });
+
+    // Get initial value and update element
+    const value = this.get(path);
+    this.updateElement(element, value);
+
+    // Setup bidirectional binding if needed
+    if (bidirectional) {
+      const updateData = (e) => {
+        const newValue = e.target.value;
+        this.set(path, newValue);
+      };
+
+      element.addEventListener('input', updateData);
+      element.addEventListener('change', updateData);
+    }
+  }
+
+  /**
+   * Update element with value
+   */
+  updateElement(element, value) {
+    if (!element) return;
+
+    const tagName = element.tagName.toLowerCase();
+
+    if (tagName === 'input' || tagName === 'textarea') {
+      if (element.type === 'checkbox') {
+        element.checked = !!value;
+      } else if (element.type === 'radio') {
+        element.checked = element.value === value;
+      } else {
+        element.value = value !== undefined && value !== null ? value : '';
+      }
+    } else if (tagName === 'select') {
+      element.value = value !== undefined && value !== null ? value : '';
+    } else {
+      // For other elements, set textContent or innerHTML based on data-bind-html attribute
+      if (element.hasAttribute('data-bind-html')) {
+        element.innerHTML = value !== undefined && value !== null ? value : '';
+      } else {
+        element.textContent = value !== undefined && value !== null ? value : '';
+      }
+    }
+  }
+
+  /**
    * Register a template
    */
   registerTemplate(template) {
-    this.templates.set(template.id, template);
+    this.state.templates.set(template.id, template);
 
-    // Register with Derby
-    try {
-      this.app.component(template.name, {
-        view: template.template_data.view || '',
-        init: function() {
-          // Template initialization logic
-        }
+    // Register as component if it has a name
+    if (template.name) {
+      this.registerComponent(template.name, {
+        template: template.template_data?.view || '',
+        data: template.template_data || {}
       });
-
-      console.log(`ConvoAppGen: Registered template ${template.name}`);
-    } catch (error) {
-      console.error(`ConvoAppGen: Failed to register template ${template.name}`, error);
     }
+
+    console.log(`ConvoAppGen: Registered template ${template.id}`);
   }
 
   /**
@@ -145,36 +289,27 @@ export class ConvoAppGen {
   registerCoreComponents() {
     // Content Component
     this.registerComponent('Content', {
-      view: `
+      template: `
         <div class="convo-content" data-aevip-id="{{id}}">
-          {{#if html}}
-            {{{html}}}
-          {{else}}
-            {{body}}
-          {{/if}}
+          <div data-bind="content.{{id}}.html" data-bind-html></div>
         </div>
-      `,
-      init: function() {
-        this.model.on('change', 'html', () => {
-          this.model.emit('contentUpdated', this.model.get('id'));
-        });
-      }
+      `
     });
 
     // Template Component
     this.registerComponent('Template', {
-      view: `
+      template: `
         <div class="convo-template" data-template-id="{{id}}">
-          <view is="{{templateType}}" />
+          <!-- Template content -->
         </div>
       `
     });
 
     // Variation Component
     this.registerComponent('Variation', {
-      view: `
+      template: `
         <div class="convo-variation" data-variation-id="{{id}}" style="{{css}}">
-          <view is="Content" id="{{contentId}}" />
+          <div data-bind="content.{{contentId}}"></div>
         </div>
       `
     });
@@ -184,142 +319,160 @@ export class ConvoAppGen {
    * Register a component
    */
   registerComponent(name, component) {
-    this.components.set(name, component);
-
-    try {
-      this.app.component(name, component);
-      console.log(`ConvoAppGen: Registered component ${name}`);
-    } catch (error) {
-      console.error(`ConvoAppGen: Failed to register component ${name}`, error);
-    }
+    this.state.components.set(name, component);
+    console.log(`ConvoAppGen: Registered component ${name}`);
   }
 
   /**
-   * Create a page from template
+   * Render a template with data
    */
-  async createPage(templateId, data = {}) {
-    const template = this.templates.get(templateId);
+  renderTemplate(template, data = {}) {
+    let html = template;
 
-    if (!template) {
-      throw new Error(`Template not found: ${templateId}`);
-    }
-
-    // Create a new page model
-    const pageId = `page-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    this.model.set(`pages.${pageId}`, {
-      id: pageId,
-      templateId,
-      data,
-      createdAt: Date.now()
+    // Simple mustache-like template parsing
+    html = html.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+      const value = this.getValueByPath(data, path.trim());
+      return value !== undefined && value !== null ? value : '';
     });
 
-    return pageId;
+    // Handle loops: {{#each items}}...{{/each}}
+    html = html.replace(/\{\{#each\s+([^}]+)\}\}([\s\S]*?)\{\{\/each\}\}/g, (match, arrayPath, itemTemplate) => {
+      const array = this.getValueByPath(data, arrayPath.trim());
+
+      if (!Array.isArray(array)) return '';
+
+      return array.map(item => {
+        return this.renderTemplate(itemTemplate, item);
+      }).join('');
+    });
+
+    // Handle conditionals: {{#if condition}}...{{/if}}
+    html = html.replace(/\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, condition, content) => {
+      const value = this.getValueByPath(data, condition.trim());
+      return value ? content : '';
+    });
+
+    return html;
+  }
+
+  /**
+   * Get value by path (supports nested paths like "user.name.first")
+   */
+  getValueByPath(obj, path) {
+    return path.split('.').reduce((current, prop) => {
+      return current?.[prop];
+    }, obj);
   }
 
   /**
    * Render a component
    */
-  async renderComponent(name, data = {}) {
-    const component = this.components.get(name);
+  renderComponent(name, data = {}) {
+    const component = this.state.components.get(name);
 
     if (!component) {
       throw new Error(`Component not found: ${name}`);
     }
 
-    // Create temporary model for rendering
-    const tempModel = this.model.child('_temp.' + Date.now());
-    Object.entries(data).forEach(([key, value]) => {
-      tempModel.set(key, value);
-    });
-
-    try {
-      // Render using Derby's rendering engine
-      const rendered = this.app.render(component.view, tempModel);
-      return rendered;
-    } catch (error) {
-      console.error(`ConvoAppGen: Failed to render ${name}`, error);
-      throw error;
-    }
+    return this.renderTemplate(component.template, data);
   }
 
   /**
-   * Bind data to element
-   */
-  bindToElement(element, path, bidirectional = false) {
-    if (!element || !path) return;
-
-    // Get initial value
-    const value = this.model.get(path);
-    this.updateElement(element, value);
-
-    // Listen to model changes
-    this.model.on('change', path, (newValue) => {
-      this.updateElement(element, newValue);
-    });
-
-    // Bidirectional binding
-    if (bidirectional) {
-      element.addEventListener('input', (e) => {
-        this.model.set(path, e.target.value);
-      });
-    }
-  }
-
-  /**
-   * Update element with value
-   */
-  updateElement(element, value) {
-    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-      element.value = value || '';
-    } else {
-      element.textContent = value || '';
-    }
-  }
-
-  /**
-   * Subscribe to path changes
+   * Subscribe to data changes
    */
   subscribe(path, callback) {
-    this.model.on('change', path, callback);
+    if (!this.state.observers.has(path)) {
+      this.state.observers.set(path, new Set());
+    }
+
+    this.state.observers.get(path).add(callback);
+
+    // Return unsubscribe function
+    return () => {
+      const handlers = this.state.observers.get(path);
+      if (handlers) {
+        handlers.delete(callback);
+      }
+    };
   }
 
   /**
-   * Get value from model
+   * Get value from reactive data
    */
   get(path) {
-    return this.model.get(path);
+    return this.getValueByPath(this.reactiveData, path);
   }
 
   /**
-   * Set value in model
+   * Set value in reactive data
    */
   set(path, value) {
-    this.model.set(path, value);
+    const parts = path.split('.');
+    let current = this.state.data;
+
+    // Navigate to parent
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+
+      if (!(part in current)) {
+        current[part] = {};
+      }
+
+      current = current[part];
+    }
+
+    // Set value
+    const lastPart = parts[parts.length - 1];
+    current[lastPart] = value;
+
+    // Notify change
+    this.notifyChange(path, value, undefined);
+  }
+
+  /**
+   * Delete value from reactive data
+   */
+  delete(path) {
+    const parts = path.split('.');
+    let current = this.state.data;
+
+    // Navigate to parent
+    for (let i = 0; i < parts.length - 1; i++) {
+      current = current[parts[i]];
+      if (!current) return;
+    }
+
+    // Delete value
+    const lastPart = parts[parts.length - 1];
+    const oldValue = current[lastPart];
+    delete current[lastPart];
+
+    // Notify change
+    this.notifyChange(path, undefined, oldValue);
   }
 
   /**
    * Get all templates
    */
   getTemplates() {
-    return Array.from(this.templates.values());
+    return Array.from(this.state.templates.values());
   }
 
   /**
    * Get all components
    */
   getComponents() {
-    return Array.from(this.components.keys());
+    return Array.from(this.state.components.keys());
   }
 
   /**
-   * Export app state
+   * Export state
    */
   exportState() {
     return {
-      model: this.model.get(),
-      templates: Array.from(this.templates.entries()),
-      components: Array.from(this.components.keys())
+      data: this.state.data,
+      templates: Array.from(this.state.templates.entries()),
+      components: Array.from(this.state.components.keys())
     };
   }
 
@@ -327,11 +480,9 @@ export class ConvoAppGen {
    * Destroy and cleanup
    */
   destroy() {
-    if (this.model) {
-      this.model.destroy();
-    }
-
-    this.templates.clear();
-    this.components.clear();
+    this.state.observers.clear();
+    this.state.bindings.clear();
+    this.state.templates.clear();
+    this.state.components.clear();
   }
 }
