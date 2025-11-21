@@ -1,0 +1,14 @@
+{
+  "appId": "com.cmsjs.app",
+  "appName": "CMS.js",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}

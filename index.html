@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMS.js - Infinite Generative Platform</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    .loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      transition: opacity 0.5s;
+    }
+
+    .loader.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loader-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loader-text {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #fff;
+    }
+
+    .header {
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .nav {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .nav-btn {
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 14px;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .nav-btn.active {
+      background: #3b82f6;
+      border-color: #3b82f6;
+    }
+
+    .main-container {
+      padding: 40px 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .feature-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 30px;
+      transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .feature-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .feature-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .feature-description {
+      font-size: 14px;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+
+    .demo-section {
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 40px;
+    }
+
+    .demo-title {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .demo-controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .demo-btn {
+      padding: 12px 24px;
+      background: #3b82f6;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .demo-btn:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .demo-output {
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 8px;
+      padding: 20px;
+      min-height: 200px;
+      max-height: 400px;
+      overflow: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #3b82f6;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .scene-container {
+      width: 100%;
+      height: 600px;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    /* Content with AevIP integration */
+    .aevip-content {
+      border: 2px dashed rgba(59, 130, 246, 0.3);
+      border-radius: 8px;
+      padding: 20px;
+      min-height: 100px;
+      transition: all 0.3s;
+    }
+
+    .aevip-content.aevip-updated {
+      border-color: #10b981;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .aevip-content.aevip-error {
+      border-color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Initializing CMS.js Platform...</div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <h1>🚀 CMS.js Platform</h1>
+    <p>Infinite Generative CMS with PocketBase, Electric-SQL, Derby.js & A-Frame</p>
+
+    <nav class="nav">
+      <button class="nav-btn active" data-section="overview">Overview</button>
+      <button class="nav-btn" data-section="templates">CR8ENGINE</button>
+      <button class="nav-btn" data-section="3d">3D Generator</button>
+      <button class="nav-btn" data-section="designs">Design Variations</button>
+      <button class="nav-btn" data-section="stats">Statistics</button>
+    </nav>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Overview Section -->
+    <section id="overview-section">
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3 class="feature-title">AevIP Protocol</h3>
+          <p class="feature-description">
+            Resilient incremental publishing with viewport-aware updates via IntersectionObserver & MutationObserver
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3 class="feature-title">PGlite + Electric</h3>
+          <p class="feature-description">
+            PostgreSQL in your browser via WASM, synced in real-time with PocketBase backend
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🎨</div>
+          <h3 class="feature-title">ConvoAppGen</h3>
+          <p class="feature-description">
+            Derby.js renamed with reactive templates and real-time data binding
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚙️</div>
+          <h3 class="feature-title">CR8ENGINE</h3>
+          <p class="feature-description">
+            7 template generators (Cr8Base, Cr83D, Animation, Story, Multi, Form, Urweb) with infinite variations
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🎭</div>
+          <h3 class="feature-title">Infinite 3D</h3>
+          <p class="feature-description">
+            A-Frame integration with procedural 3D object generation - infinite unique scenes
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🌈</div>
+          <h3 class="feature-title">Design Variations</h3>
+          <p class="feature-description">
+            Infinite design variations (modern, glassmorphism, neumorphism, neon, etc.) - no AI needed!
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Templates Section -->
+    <section id="templates-section" class="demo-section" style="display: none;">
+      <h2 class="demo-title">CR8ENGINE - Infinite Template Generation</h2>
+
+      <div class="demo-controls">
+        <button class="demo-btn" onclick="generateTemplates('Cr8Base', 5)">Generate Base (5)</button>
+        <button class="demo-btn" onclick="generateTemplates('Cr83D', 5)">Generate 3D (5)</button>
+        <button class="demo-btn" onclick="generateTemplates('Cr8Animation', 5)">Generate Animations (5)</button>
+        <button class="demo-btn" onclick="generateTemplates('Cr8Form', 5)">Generate Forms (5)</button>
+        <button class="demo-btn" onclick="generateTemplates('Cr8Story', 5)">Generate Stories (5)</button>
+      </div>
+
+      <div class="demo-output" id="templates-output"></div>
+    </section>
+
+    <!-- 3D Section -->
+    <section id="3d-section" class="demo-section" style="display: none;">
+      <h2 class="demo-title">Infinite 3D Object Generator</h2>
+
+      <div class="demo-controls">
+        <button class="demo-btn" onclick="generateScene(50)">Generate Scene (50 objects)</button>
+        <button class="demo-btn" onclick="generateScene(100)">Generate Scene (100 objects)</button>
+        <button class="demo-btn" onclick="generateScene(200)">Generate Scene (200 objects)</button>
+        <button class="demo-btn" onclick="clearScene()">Clear Scene</button>
+      </div>
+
+      <div class="scene-container" id="scene-container"></div>
+    </section>
+
+    <!-- Designs Section -->
+    <section id="designs-section" class="demo-section" style="display: none;">
+      <h2 class="demo-title">Infinite Design Variations</h2>
+
+      <div class="demo-controls">
+        <button class="demo-btn" onclick="generateDesigns('modern', 3)">Modern (3)</button>
+        <button class="demo-btn" onclick="generateDesigns('glassmorphism', 3)">Glassmorphism (3)</button>
+        <button class="demo-btn" onclick="generateDesigns('neumorphism', 3)">Neumorphism (3)</button>
+        <button class="demo-btn" onclick="generateDesigns('neon', 3)">Neon (3)</button>
+        <button class="demo-btn" onclick="generateDesigns(null, 5)">Random (5)</button>
+      </div>
+
+      <div class="demo-output" id="designs-output"></div>
+    </section>
+
+    <!-- Stats Section -->
+    <section id="stats-section" class="demo-section" style="display: none;">
+      <h2 class="demo-title">Platform Statistics</h2>
+
+      <div class="stats-grid" id="stats-grid">
+        <!-- Stats will be populated dynamically -->
+      </div>
+
+      <button class="demo-btn" onclick="updateStats()" style="margin-top: 20px;">Refresh Stats</button>
+    </section>
+  </div>
+
+  <!-- Include A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.min.js"></script>
+  <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
+
+  <!-- Main App -->
+  <script type="module">
+    import CMSjs from './src/index.js';
+
+    // Wait for CMS.js to be ready
+    window.addEventListener('cmsjs:ready', (event) => {
+      console.log('CMS.js is ready!', event.detail.cmsjs);
+
+      // Hide loader
+      document.getElementById('loader').classList.add('hidden');
+
+      // Update stats
+      updateStats();
+    });
+
+    // Navigation
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Update active button
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Show section
+        const section = btn.getAttribute('data-section');
+        document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+        document.getElementById(`${section}-section`).style.display = 'block';
+      });
+    });
+
+    // Global functions for demo buttons
+    window.generateTemplates = async function(engineName, count) {
+      const output = document.getElementById('templates-output');
+      output.innerHTML = `Generating ${count} ${engineName} templates...\n\n`;
+
+      const generator = window.cmsjs.generateTemplates(engineName, count);
+      let index = 0;
+
+      for await (const template of generator) {
+        output.innerHTML += `Template ${index + 1}:\n${JSON.stringify(template, null, 2)}\n\n`;
+        index++;
+      }
+
+      output.innerHTML += `✅ Generated ${index} templates!`;
+    };
+
+    window.generateScene = async function(objectCount) {
+      const container = document.getElementById('scene-container');
+      container.innerHTML = 'Generating 3D scene...';
+
+      const sceneId = `scene-${Date.now()}`;
+      const scene = await window.cmsjs.create3DScene(sceneId, objectCount);
+      const html = window.cmsjs.render3DScene(scene);
+
+      container.innerHTML = html;
+    };
+
+    window.clearScene = function() {
+      document.getElementById('scene-container').innerHTML = '';
+    };
+
+    window.generateDesigns = async function(styleName, count) {
+      const output = document.getElementById('designs-output');
+      output.innerHTML = `Generating ${count} ${styleName || 'random'} design variations...\n\n`;
+
+      const generator = window.cmsjs.generateDesigns(styleName, count);
+      let index = 0;
+
+      for await (const variation of generator) {
+        output.innerHTML += `Variation ${index + 1} (${variation.style_name}):\n`;
+        output.innerHTML += `Config: ${JSON.stringify(variation.config, null, 2)}\n\n`;
+        index++;
+      }
+
+      output.innerHTML += `✅ Generated ${index} variations!`;
+    };
+
+    window.updateStats = function() {
+      const stats = window.cmsjs.getStats();
+      const grid = document.getElementById('stats-grid');
+
+      grid.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-value">${stats.cr8engine?.generatedCount || 0}</div>
+          <div class="stat-label">Templates Generated</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.generator3d?.generatedCount || 0}</div>
+          <div class="stat-label">3D Objects Generated</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.designVariation?.generatedCount || 0}</div>
+          <div class="stat-label">Design Variations</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.viewport?.observedElements || 0}</div>
+          <div class="stat-label">Observed Elements</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.viewport?.currentlyVisible || 0}</div>
+          <div class="stat-label">Visible Elements</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${stats.viewport?.updatesApplied || 0}</div>
+          <div class="stat-label">Updates Applied</div>
+        </div>
+      `;
+    };
+  </script>
+</body>
+</html>
