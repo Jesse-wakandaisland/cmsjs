@@ -31,8 +31,8 @@ export class PGliteManager {
    */
   async init() {
     try {
-      this.db = await PGlite.create({
-        dataDir: this.config.dataDir,
+      // PGlite uses constructor, not static create method
+      this.db = new PGlite(this.config.dataDir, {
         debug: this.config.debug
       });
 
