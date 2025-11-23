@@ -822,9 +822,237 @@ class CMSPlatform {
 const app = new CMSPlatform();
 window.app = app;
 
-console.log('%c✅ CMS.js FULL PLATFORM READY!', 'color: #10b981; font-size: 18px; font-weight: bold');
-console.log('Access: window.app');
+// ============================================================
+// AEV SYNC - Bidirectional Synchronization with cms-core.html and main_convo-design-set-prod.html
+// ============================================================
+
+class AEVSync {
+    constructor(config = {}) {
+        this.config = {
+            source: config.source || 'jsonStandalone',
+            debug: config.debug !== false,
+            ...config
+        };
+        this.handlers = new Map();
+        this.stats = { sent: 0, received: 0, errors: 0, startTime: Date.now() };
+        this.init();
+    }
+
+    init() {
+        window.addEventListener('message', (event) => this.handleMessage(event));
+        this.log(`🔄 AEV Sync initialized (${this.config.source})`);
+    }
+
+    handleMessage(event) {
+        try {
+            const message = event.data;
+            if (!message || typeof message !== 'object') return;
+            if (!message.type || !message.source || !message.data) return;
+            if (message.source === this.config.source) return;
+
+            this.stats.received++;
+            this.log(`Received ${message.type} from ${message.source}`, message.data);
+
+            const handlers = this.handlers.get(message.type);
+            if (handlers) {
+                handlers.forEach(handler => {
+                    try {
+                        handler(message.data, message.source, message);
+                    } catch (error) {
+                        console.error('Handler error:', error);
+                        this.stats.errors++;
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Message error:', error);
+            this.stats.errors++;
+        }
+    }
+
+    send(type, data, target = '*') {
+        try {
+            const message = {
+                type,
+                source: this.config.source,
+                data,
+                timestamp: new Date().toISOString()
+            };
+
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage(message, target);
+                this.stats.sent++;
+            }
+
+            document.querySelectorAll('iframe').forEach(iframe => {
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.postMessage(message, target);
+                    this.stats.sent++;
+                }
+            });
+
+            this.log(`Sent ${message.type}`);
+            return true;
+        } catch (error) {
+            console.error('Send error:', error);
+            this.stats.errors++;
+            return false;
+        }
+    }
+
+    on(type, handler) {
+        if (!this.handlers.has(type)) {
+            this.handlers.set(type, new Set());
+        }
+        this.handlers.get(type).add(handler);
+        return () => {
+            const handlers = this.handlers.get(type);
+            if (handlers) handlers.delete(handler);
+        };
+    }
+
+    sendChat(sender, message) {
+        return this.send('chatSync', { sender, message, timestamp: new Date().toISOString() });
+    }
+
+    sendDesign(variation) {
+        return this.send('designSync', { type: 'variation', variation, timestamp: new Date().toISOString() });
+    }
+
+    sendTemplate(template) {
+        return this.send('templateSync', { type: 'template', template, timestamp: new Date().toISOString() });
+    }
+
+    send3DObject(object) {
+        return this.send('3dSync', { type: '3d-object', object, timestamp: new Date().toISOString() });
+    }
+
+    sendState(path, value) {
+        return this.send('stateSync', { path, value, timestamp: new Date().toISOString() });
+    }
+
+    log(...args) {
+        if (this.config.debug) {
+            console.log(`[AEVSync:${this.config.source}]`, ...args);
+        }
+    }
+
+    getStats() {
+        return {
+            ...this.stats,
+            uptime: Date.now() - this.stats.startTime,
+            errorRate: this.stats.errors / (this.stats.sent + this.stats.received || 1)
+        };
+    }
+}
+
+// Initialize AEV Sync
+const aevSync = new AEVSync({
+    source: 'jsonStandalone',
+    debug: true
+});
+
+// Listen for incoming sync messages
+aevSync.on('chatSync', (data, source) => {
+    console.log('💬 Chat message from', source, ':', data);
+    app.createWindow(`Message from ${source}`, `
+        <p><strong>${data.sender}:</strong></p>
+        <p>${data.message}</p>
+        <small>${new Date(data.timestamp).toLocaleTimeString()}</small>
+    `);
+});
+
+aevSync.on('designSync', (data, source) => {
+    console.log('🎨 Design variation from', source, ':', data);
+    if (data.variation && data.variation.css) {
+        // Apply the design variation
+        let styleEl = document.getElementById(`sync-design-${data.variation.id}`);
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = `sync-design-${data.variation.id}`;
+            document.head.appendChild(styleEl);
+        }
+        styleEl.textContent = data.variation.css;
+
+        app.createWindow(`Design from ${source}`, `
+            <h3>Style: ${data.variation.style_name}</h3>
+            <p>Variation Index: ${data.variation.variation_index}</p>
+            <div style="margin-top:10px;">
+                ${Object.entries(data.variation.config.palette || {}).map(([key, val]) =>
+                    `<div style="padding:5px;margin:2px;background:${val};border-radius:4px;">${key}: ${val}</div>`
+                ).join('')}
+            </div>
+        `);
+    }
+});
+
+aevSync.on('templateSync', (data, source) => {
+    console.log('📄 Template from', source, ':', data);
+    if (data.template) {
+        app.createWindow(`Template from ${source}`, `
+            <h3>${data.template.engine_name || 'Template'} ${data.template.variation_index || ''}</h3>
+            <div style="max-height:300px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:10px; border-radius:4px;">
+                ${data.template.html || 'No HTML'}
+            </div>
+        `);
+    }
+});
+
+aevSync.on('3dSync', (data, source) => {
+    console.log('🎭 3D object from', source, ':', data);
+    if (data.object) {
+        app.createWindow(`3D Object from ${source}`, `
+            <h3>3D Object: ${data.object.type || data.object.primitive}</h3>
+            <p>Position: ${JSON.stringify(data.object.position || {})}</p>
+            <p>Rotation: ${JSON.stringify(data.object.rotation || {})}</p>
+            <p>Scale: ${JSON.stringify(data.object.scale || {})}</p>
+        `);
+    }
+});
+
+aevSync.on('stateSync', (data, source) => {
+    console.log('🔄 State update from', source, ':', data);
+    // Could update local state here
+});
+
+// Broadcast when generating locally
+const originalGenerateApps = app.generateApps.bind(app);
+app.generateApps = function(engineName, count) {
+    const result = originalGenerateApps(engineName, count);
+    // Sync to other systems
+    result.forEach(template => {
+        aevSync.sendTemplate(template);
+    });
+    return result;
+};
+
+const originalGenerate3DScene = app.generate3DScene.bind(app);
+app.generate3DScene = function(count) {
+    const result = originalGenerate3DScene(count);
+    // Sync to other systems
+    result.forEach(obj => {
+        aevSync.send3DObject(obj);
+    });
+    return result;
+};
+
+const originalGenerateDesigns = app.generateDesigns.bind(app);
+app.generateDesigns = function(styleName, count) {
+    const result = originalGenerateDesigns(styleName, count);
+    // Sync to other systems
+    result.forEach(design => {
+        aevSync.sendDesign(design);
+    });
+    return result;
+};
+
+// Expose AEV Sync
+window.aevSync = aevSync;
+
+console.log('%c✅ CMS.js FULL PLATFORM READY with AEV Sync!', 'color: #10b981; font-size: 18px; font-weight: bold');
+console.log('Access: window.app, window.aevSync');
 console.log('Methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(app)).filter(m => m !== 'constructor'));
+console.log('AEV Sync Stats:', aevSync.getStats());
 
 new CanvasBackground(document.getElementById('background-canvas'));
     </script>
