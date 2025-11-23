@@ -344,6 +344,172 @@
             position: relative;
         }
 
+        /* ============================================================
+           INTEGRATED SYSTEMS LAYOUT
+           ============================================================ */
+
+        .systems-hub {
+            position: fixed;
+            top: 70px;
+            left: 360px;
+            right: 320px;
+            bottom: 80px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .systems-tabs {
+            display: flex;
+            gap: 0;
+            padding: 10px 10px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .system-tab {
+            padding: 12px 24px;
+            border: 1px solid var(--glass-border);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .system-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .system-tab.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border-bottom: 2px solid hsl(var(--accent-hue), 70%, 60%);
+        }
+
+        .system-tab .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .systems-content {
+            flex: 1;
+            position: relative;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .system-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+        }
+
+        .system-panel.active {
+            display: block;
+        }
+
+        .system-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
+        .system-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .hub-toggle {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            padding: 10px 20px;
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .hub-toggle:hover {
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .sync-indicator {
+            position: fixed;
+            top: 20px;
+            left: 360px;
+            padding: 8px 16px;
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 11px;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sync-indicator.syncing {
+            border-color: hsl(var(--accent-hue), 70%, 60%);
+            box-shadow: 0 0 12px hsla(var(--accent-hue), 70%, 60%, 0.3);
+        }
+
         @media (max-width: 768px) {
             .generation-panel,
             .stats-display {
@@ -359,11 +525,91 @@
                 min-width: 90vw;
                 max-width: 90vw;
             }
+
+            .systems-hub {
+                left: 10px;
+                right: 10px;
+                top: 80px;
+            }
+
+            .hub-toggle {
+                top: 10px;
+                font-size: 11px;
+                padding: 8px 16px;
+            }
         }
     </style>
 </head>
 <body>
     <canvas id="background-canvas"></canvas>
+
+    <!-- Hub Toggle -->
+    <button class="hub-toggle" onclick="app.toggleSystemsHub()">
+        🌐 Systems Hub
+    </button>
+
+    <!-- Sync Indicator -->
+    <div class="sync-indicator" id="sync-indicator">
+        <span class="status-dot"></span>
+        <span id="sync-status">Ready</span>
+    </div>
+
+    <!-- Systems Hub Container -->
+    <div class="systems-hub" id="systems-hub">
+        <div class="systems-tabs">
+            <div class="system-tab active" data-system="cms-core" onclick="app.switchSystem('cms-core')">
+                <span class="status-dot"></span>
+                📱 CMS Builder
+            </div>
+            <div class="system-tab" data-system="convo-builder" onclick="app.switchSystem('convo-builder')">
+                <span class="status-dot"></span>
+                🎨 ConvoBuilder
+            </div>
+            <div class="system-tab" data-system="json-standalone" onclick="app.switchSystem('json-standalone')">
+                <span class="status-dot"></span>
+                ⚡ JSON Standalone
+            </div>
+        </div>
+        <div class="systems-content">
+            <div class="system-panel active" id="panel-cms-core">
+                <div class="system-controls">
+                    <button class="control-btn" onclick="document.getElementById('iframe-cms-core').contentWindow.location.reload()">
+                        🔄 Reload
+                    </button>
+                    <button class="control-btn" onclick="app.openInNewTab('cms-core.html')">
+                        🗗 Open in Tab
+                    </button>
+                </div>
+                <iframe id="iframe-cms-core" class="system-iframe" src="cms-core.html"></iframe>
+            </div>
+            <div class="system-panel" id="panel-convo-builder">
+                <div class="system-controls">
+                    <button class="control-btn" onclick="document.getElementById('iframe-convo').contentWindow.location.reload()">
+                        🔄 Reload
+                    </button>
+                    <button class="control-btn" onclick="app.openInNewTab('main_convo-design-set-prod.html')">
+                        🗗 Open in Tab
+                    </button>
+                </div>
+                <iframe id="iframe-convo" class="system-iframe" src="main_convo-design-set-prod.html"></iframe>
+            </div>
+            <div class="system-panel" id="panel-json-standalone">
+                <div style="padding: 40px; color: white; text-align: center;">
+                    <h2 style="margin-bottom: 20px;">🚀 You're in the JSON Standalone System</h2>
+                    <p style="margin-bottom: 20px; opacity: 0.8;">
+                        This is the main infinite generative platform with all features built-in.
+                    </p>
+                    <p style="opacity: 0.7;">
+                        Use the left panel to generate content, and it will sync to the other systems via AEV Sync.
+                    </p>
+                    <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 8px; text-align: left;">
+                        <h3 style="margin-bottom: 15px;">📡 Live Sync Status:</h3>
+                        <div id="standalone-sync-status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="desktop" id="desktop">
         <div class="generation-panel" id="generation-panel">
@@ -817,6 +1063,39 @@ class CMSPlatform {
         document.getElementById('stat-observed').textContent = this.stats.observed;
         document.getElementById('stat-db').textContent = this.stats.dbRecords;
     }
+
+    // ============================================================
+    // Systems Hub Integration
+    // ============================================================
+
+    switchSystem(systemId) {
+        // Update tabs
+        document.querySelectorAll('.system-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelector(`[data-system="${systemId}"]`).classList.add('active');
+
+        // Update panels
+        document.querySelectorAll('.system-panel').forEach(panel => {
+            panel.classList.remove('active');
+        });
+        document.getElementById(`panel-${systemId}`).classList.add('active');
+
+        console.log(`Switched to: ${systemId}`);
+    }
+
+    toggleSystemsHub() {
+        const hub = document.getElementById('systems-hub');
+        if (hub.style.display === 'none') {
+            hub.style.display = 'flex';
+        } else {
+            hub.style.display = 'none';
+        }
+    }
+
+    openInNewTab(url) {
+        window.open(url, '_blank');
+    }
 }
 
 const app = new CMSPlatform();
@@ -1014,6 +1293,64 @@ aevSync.on('stateSync', (data, source) => {
     console.log('🔄 State update from', source, ':', data);
     // Could update local state here
 });
+
+// Update sync indicator on activity
+function updateSyncIndicator(message, isActive = true) {
+    const indicator = document.getElementById('sync-indicator');
+    const status = document.getElementById('sync-status');
+
+    if (isActive) {
+        indicator.classList.add('syncing');
+        status.textContent = message;
+
+        // Auto-clear after 2 seconds
+        setTimeout(() => {
+            indicator.classList.remove('syncing');
+            status.textContent = 'Ready';
+        }, 2000);
+    } else {
+        indicator.classList.remove('syncing');
+        status.textContent = message;
+    }
+}
+
+// Update standalone sync status display
+function updateStandaloneSyncStatus() {
+    const statusDiv = document.getElementById('standalone-sync-status');
+    if (!statusDiv) return;
+
+    const stats = aevSync.getStats();
+    const uptime = Math.floor(stats.uptime / 1000);
+
+    statusDiv.innerHTML = `
+        <div style="font-size: 12px; font-family: monospace;">
+            <div style="margin: 8px 0;">📤 Sent: <strong>${stats.sent}</strong> messages</div>
+            <div style="margin: 8px 0;">📥 Received: <strong>${stats.received}</strong> messages</div>
+            <div style="margin: 8px 0;">⚠️ Errors: <strong>${stats.errors}</strong></div>
+            <div style="margin: 8px 0;">⏱️ Uptime: <strong>${uptime}s</strong></div>
+            <div style="margin: 8px 0;">📊 Error Rate: <strong>${(stats.errorRate * 100).toFixed(2)}%</strong></div>
+        </div>
+    `;
+}
+
+// Update sync status every second
+setInterval(updateStandaloneSyncStatus, 1000);
+
+// Hook into aevSync to update indicator
+const originalSend = aevSync.send.bind(aevSync);
+aevSync.send = function(type, data, target) {
+    updateSyncIndicator(`Syncing ${type}...`, true);
+    return originalSend(type, data, target);
+};
+
+const originalHandleMessage = aevSync.handleMessage.bind(aevSync);
+aevSync.handleMessage = function(event) {
+    const result = originalHandleMessage(event);
+    if (event.data && event.data.type && event.data.source !== 'jsonStandalone') {
+        updateSyncIndicator(`Received ${event.data.type} from ${event.data.source}`, true);
+    }
+    return result;
+};
 
 // Broadcast when generating locally
 const originalGenerateApps = app.generateApps.bind(app);
